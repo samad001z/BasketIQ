@@ -2,7 +2,8 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 python-multipart==0.0.20
-pydantic==2.10.4
+# 2.11.7+ required by supabase's `realtime` dep (and fine for fastapi/genai).
+pydantic==2.11.7
 pydantic-settings==2.7.1
 python-dotenv==1.0.1
 
@@ -11,8 +12,8 @@ python-dotenv==1.0.1
 # (older versions reject non-JWT keys via a regex).
 supabase==2.31.0
 
-# Gemini Developer API (AI Studio key — NOT Vertex AI)
+# Gemini via Vertex AI (google-genai SDK, service-account auth)
 google-genai==1.2.0
 
-# NOTE: playwright is intentionally NOT here. It belongs to the optional
-# collectors/ module in Phase 8 only.
+# NOTE: playwright is intentionally NOT here — it's optional and only powers the
+# Phase 9 collectors' browser fallback (collectors/requirements-collectors.txt).
