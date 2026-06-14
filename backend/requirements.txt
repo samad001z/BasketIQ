@@ -1,0 +1,17 @@
+# --- BasketIQ backend (Python 3.11+) ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+
+# Supabase (Postgres + Auth + Storage + pgvector)
+# 2.31+ required: accepts the new sb_publishable_/sb_secret_ API key format
+# (older versions reject non-JWT keys via a regex).
+supabase==2.31.0
+
+# Gemini Developer API (AI Studio key — NOT Vertex AI)
+google-genai==1.2.0
+
+# NOTE: playwright is intentionally NOT here. It belongs to the optional
+# collectors/ module in Phase 8 only.

@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "BasketIQ",
+    "slug": "basketiq",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "basketiq",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.basketiq.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.basketiq.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
