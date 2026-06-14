@@ -1,0 +1,31 @@
+# Render Blueprint for the BasketIQ FastAPI backend.
+# Deploy: render.com → New → Blueprint → pick this repo. Set the `sync: false`
+# secrets in the dashboard. Free tier cold-starts after inactivity (~50s).
+services:
+  - type: web
+    name: basketiq-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GOOGLE_CLOUD_PROJECT
+        sync: false
+      - key: GOOGLE_CLOUD_LOCATION
+        value: us-central1
+      # Paste the FULL contents of sa-vertex.json as the value (one line is fine).
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      # Live collectors can't work on a datacenter IP — keep off in the cloud.
+      - key: LIVE_PRICES_ENABLED
+        value: "false"

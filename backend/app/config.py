@@ -1,7 +1,24 @@
 """Centralised settings loaded from environment (.env). pydantic-settings v2."""
+import os
+import pathlib
+import tempfile
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _materialize_vertex_credentials() -> None:
+    """Host-agnostic Vertex auth: on cloud hosts (Render/Vercel/etc.) there's no
+    committed sa-vertex.json, so write GOOGLE_CREDENTIALS_JSON to a temp file and
+    point ADC at it. No-op locally (the .env file path is already set)."""
+    creds = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    if creds and not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        path = pathlib.Path(tempfile.gettempdir()) / "sa-vertex.json"
+        path.write_text(creds, encoding="utf-8")
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(path)
+
+
+_materialize_vertex_credentials()
 
 
 class Settings(BaseSettings):
