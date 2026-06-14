@@ -96,6 +96,15 @@ def search(query: str, k: int = 10) -> list[dict]:
     return [m for m in matches if m["similarity"] >= SEARCH_MIN_SIM]
 
 
+def candidates(query: str, k: int = 30) -> list[dict]:
+    """Nearest products for a query WITHOUT the search floor — a generous slice
+    used as candidate context for the AI assistant (Phase 6)."""
+    q = query.strip()
+    if not q:
+        return []
+    return _nearest(embed_text(q, task_type="RETRIEVAL_QUERY"), k)
+
+
 def match_external_product(
     name: str, brand: str | None = None, quantity: str | None = None
 ) -> str | None:

@@ -1,0 +1,8 @@
+# OPTIONAL — only needed to run the live collectors' browser fallback.
+# Install separately from the core backend (keeps the app light):
+#   pip install -r collectors/requirements-collectors.txt
+#   playwright install chromium
+#
+# httpx is already a core dependency (via supabase); listed here for clarity.
+httpx>=0.27
+playwright==1.49.1

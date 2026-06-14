@@ -22,6 +22,16 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: str = "*"
 
+    # --- Live price engine (Phase 9) ---
+    # Off by default: /search serves the seeded catalog (the proven wedge).
+    # Turn on to fetch live prices on demand (best-effort; seed stays as fallback).
+    LIVE_PRICES_ENABLED: bool = False
+    DEFAULT_PINCODE: str = "500081"  # Hyderabad (Gachibowli)
+    DEFAULT_LAT: str = "17.4435"
+    DEFAULT_LON: str = "78.3772"
+    PRICE_TTL_MINUTES: int = 20
+    COLLECTOR_TIMEOUT_S: float = 8.0
+
     @property
     def allowed_origins_list(self) -> list[str]:
         if self.ALLOWED_ORIGINS.strip() == "*":

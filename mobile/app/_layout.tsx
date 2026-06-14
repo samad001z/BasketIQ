@@ -18,9 +18,40 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { Toaster } from "@/components/Toaster";
+import { AuthProvider } from "@/lib/auth";
+import { useCartSync } from "@/lib/hooks/useCartSync";
+import { usePriceWatch } from "@/lib/hooks/usePriceWatch";
 import { queryClient } from "@/lib/queryClient";
 
 SplashScreen.preventAutoHideAsync();
+
+/** Runs cross-cutting hooks (cart sync, realtime) and renders the nav + toaster. */
+function AppShell() {
+  useCartSync();
+  usePriceWatch();
+  return (
+    <>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: "#F4F6F4" },
+          animation: "slide_from_right",
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="product/[id]" />
+        <Stack.Screen name="cart" />
+        <Stack.Screen name="assistant" />
+        <Stack.Screen name="scan" />
+        <Stack.Screen name="auth" />
+        <Stack.Screen name="analytics" />
+        <Stack.Screen name="history/[id]" />
+      </Stack>
+      <Toaster />
+    </>
+  );
+}
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -40,20 +71,12 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: "#F4F6F4" },
-            animation: "slide_from_right",
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="product/[id]" />
-          <Stack.Screen name="cart" />
-        </Stack>
-      </SafeAreaProvider>
+      <AuthProvider>
+        <SafeAreaProvider>
+          <StatusBar style="dark" />
+          <AppShell />
+        </SafeAreaProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

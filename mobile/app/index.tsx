@@ -1,9 +1,11 @@
+import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { FlatList, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CartButton } from "@/components/CartButton";
 import { CategoryChips } from "@/components/CategoryChips";
+import { PressableScale } from "@/components/PressableScale";
 import { ResultCard } from "@/components/ResultCard";
 import { SearchBar } from "@/components/SearchBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
@@ -11,6 +13,7 @@ import type { Product } from "@/lib/api";
 import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import { useProducts } from "@/lib/hooks/useProducts";
 import { useSearch } from "@/lib/hooks/useSearch";
+import { cardShadow } from "@/lib/theme";
 
 // Fixed category order for the chips row.
 const CATEGORY_ORDER = [
@@ -61,10 +64,38 @@ export default function HomeScreen() {
               Compare Blinkit · Zepto · Instamart — pay the lowest.
             </Text>
           </View>
-          <CartButton />
+          <View className="flex-row items-center gap-2">
+            <PressableScale onPress={() => router.push("/auth")}>
+              <View
+                style={cardShadow}
+                className="h-12 w-12 items-center justify-center rounded-full bg-surface"
+              >
+                <Text className="text-[18px]">👤</Text>
+              </View>
+            </PressableScale>
+            <CartButton />
+          </View>
         </View>
         <View className="mt-4">
           <SearchBar value={query} onChangeText={setQuery} />
+        </View>
+        <View className="mt-3 flex-row gap-2.5">
+          <PressableScale onPress={() => router.push("/assistant")}>
+            <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-accent-light px-4 py-3">
+              <Text className="text-[14px]">✨</Text>
+              <Text className="font-sans-semibold text-[13px] text-accent-dark">
+                Ask AI
+              </Text>
+            </View>
+          </PressableScale>
+          <PressableScale onPress={() => router.push("/scan")}>
+            <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-accent-light px-4 py-3">
+              <Text className="text-[14px]">📷</Text>
+              <Text className="font-sans-semibold text-[13px] text-accent-dark">
+                Scan a cart
+              </Text>
+            </View>
+          </PressableScale>
         </View>
       </View>
 

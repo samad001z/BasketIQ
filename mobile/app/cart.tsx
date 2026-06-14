@@ -6,16 +6,51 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CartControl } from "@/components/CartControl";
 import { OptimizedSplit } from "@/components/OptimizedSplit";
 import { PressableScale } from "@/components/PressableScale";
+import { useAuth } from "@/lib/auth";
 import { useOptimize } from "@/lib/hooks/useOptimize";
 import { computeBestOption, formatINR } from "@/lib/pricing";
+import { supabase } from "@/lib/supabase";
 import { cardShadow, categoryEmoji } from "@/lib/theme";
 import { useCartStore } from "@/store/useCartStore";
+import { useNotifications } from "@/store/useNotifications";
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const lines = useCartStore((s) => s.lines);
   const clear = useCartStore((s) => s.clear);
   const optimize = useOptimize();
+  const { session } = useAuth();
+  const pushToast = useNotifications((s) => s.push);
+
+  const markBought = async () => {
+    const result = optimize.data;
+    if (!result) return;
+    if (!session || !supabase) {
+      router.push("/auth");
+      return;
+    }
+    const items = result.split.flatMap((g) =>
+      g.items.map((li) => ({
+        product_id: li.product_id,
+        name: li.name,
+        quantity: li.quantity,
+        platform: g.platform,
+        price: li.unit_price,
+      })),
+    );
+    const { error } = await supabase.from("saved_baskets").insert({
+      user_id: session.user.id,
+      items,
+      total: result.grand_total,
+      savings: result.savings,
+    });
+    pushToast(
+      error
+        ? { title: "Couldn’t save", body: error.message }
+        : { title: "Saved to spending 📊", body: `${formatINR(result.grand_total)} recorded` },
+    );
+    if (!error) clear();
+  };
 
   // Rough total = cheapest available price × qty (pre-optimization estimate).
   const roughTotal = useMemo(
@@ -132,13 +167,24 @@ export default function CartScreen() {
             className="absolute inset-x-0 bottom-0 border-t border-line bg-surface px-5 pt-4"
           >
             {showingResult ? (
-              <PressableScale onPress={() => optimize.reset()}>
-                <View className="items-center rounded-2xl bg-accent py-4">
-                  <Text className="font-sans-semibold text-[15px] text-white">
-                    Edit cart
-                  </Text>
+              <View className="flex-row gap-3">
+                <PressableScale onPress={() => optimize.reset()}>
+                  <View className="items-center rounded-2xl bg-surface-sunken px-5 py-4">
+                    <Text className="font-sans-semibold text-[15px] text-ink-soft">
+                      Edit
+                    </Text>
+                  </View>
+                </PressableScale>
+                <View className="flex-1">
+                  <PressableScale onPress={markBought}>
+                    <View className="items-center rounded-2xl bg-accent py-4">
+                      <Text className="font-sans-semibold text-[15px] text-white">
+                        Mark as bought
+                      </Text>
+                    </View>
+                  </PressableScale>
                 </View>
-              </PressableScale>
+              </View>
             ) : (
               <>
                 <View className="mb-3 flex-row items-center justify-between">

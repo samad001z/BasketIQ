@@ -1,0 +1,9 @@
+# Keep the serverless bundle small / safe.
+.venv/
+__pycache__/
+*.pyc
+tests/
+seed/data/
+.env
+sa-vertex.json
+collectors/requirements-collectors.txt

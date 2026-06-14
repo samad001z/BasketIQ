@@ -151,6 +151,27 @@ export default function ProductDetailScreen() {
                 </View>
               </Animated.View>
 
+              <Animated.View entering={enter(160)}>
+                <PressableScale
+                  onPress={() =>
+                    router.push({
+                      pathname: "/history/[id]",
+                      params: { id: product.id },
+                    })
+                  }
+                >
+                  <View
+                    style={cardShadow}
+                    className="flex-row items-center justify-between rounded-3xl bg-surface px-4 py-3.5"
+                  >
+                    <Text className="font-sans-medium text-[14px] text-ink">
+                      📈 Price history
+                    </Text>
+                    <Text className="text-[18px] text-ink-muted">›</Text>
+                  </View>
+                </PressableScale>
+              </Animated.View>
+
               {best == null && (
                 <View className="flex-row items-center justify-center gap-2 pt-2">
                   <PlatformDot platform="blinkit" />

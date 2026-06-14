@@ -104,12 +104,21 @@ class SearchMatch(BaseModel):
     best_option: BestOption | None = None  # None if nothing is in stock
 
 
+class PlatformSource(BaseModel):
+    """Per-platform freshness for a live search (Phase 9)."""
+
+    platform: Platform
+    status: Literal["live", "cache", "stale", "error", "skipped"]
+
+
 class SearchResponse(BaseModel):
     """Response for GET /search."""
 
     query: str
     count: int
     matches: list[SearchMatch]
+    live: bool = False  # whether a live fetch was attempted
+    sources: list[PlatformSource] = []  # per-platform freshness (empty when not live)
 
 
 # ---- Cart optimizer models (Phase 5) --------------------------------------
@@ -160,3 +169,74 @@ class OptimizeResponse(BaseModel):
     savings: float  # single_best_total - grand_total (>= 0); 0 if no single platform has all
     unavailable_items: list[UnavailableItem] = []
     item_count: int
+
+
+# ---- AI assistant models (Phase 6) ----------------------------------------
+
+
+class AssistantRequest(BaseModel):
+    message: str = Field(min_length=1)
+    budget: float | None = Field(default=None, ge=0)
+
+
+class AssistantBasketItem(BaseModel):
+    product: ProductOut
+    quantity: int
+
+
+class AssistantResponse(BaseModel):
+    """A budget-aware basket proposed by the AI, with the real optimized split."""
+
+    message: str  # echo of the user's request
+    rationale: str  # one-line explanation from the model
+    budget: float | None = None
+    within_budget: bool
+    note: str | None = None  # e.g. what was trimmed to fit the budget
+    basket: list[AssistantBasketItem]
+    optimization: OptimizeResponse
+
+
+# ---- Screenshot scanner models (Phase 7) ----------------------------------
+
+
+class ScanExtractedItem(BaseModel):
+    """One line the vision model read from the screenshot + its catalog match."""
+
+    name: str
+    brand: str | None = None
+    quantity: str | None = None
+    price_seen: float | None = None
+    platform_seen: str | None = None
+    matched: bool
+    matched_product: ProductOut | None = None  # None if no confident match
+
+
+class ScanResponse(BaseModel):
+    extracted: list[ScanExtractedItem]
+    matched_count: int
+    unmatched_count: int
+    basket: list[AssistantBasketItem]  # confidently matched products + qty
+    optimization: OptimizeResponse
+    screenshot_total: float | None = None  # Σ price_seen for matched items
+    savings_vs_screenshot: float | None = None  # screenshot_total − optimized (≥ 0)
+    storage_path: str | None = None
+
+
+# ---- Price history models (Phase 8) ---------------------------------------
+
+
+class HistoryPoint(BaseModel):
+    date: datetime
+    price: float
+
+
+class PlatformHistory(BaseModel):
+    platform: Platform
+    points: list[HistoryPoint]  # oldest → newest
+    current: float | None = None
+
+
+class ProductHistoryResponse(BaseModel):
+    product_id: str
+    name: str
+    history: list[PlatformHistory]

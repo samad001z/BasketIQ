@@ -9,11 +9,13 @@ Models (locked for the whole project):
 """
 from __future__ import annotations
 
+import json
 import math
 import os
+import re
 import time
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 from app.config import get_settings
 
@@ -136,13 +138,102 @@ def same_product(a: str, b: str) -> bool:
         return False
 
 
-# --- Helpers below are STUBS until their phase ---
+# --- Text + structured generation (gemini-2.5-flash) -----------------------
 
 def chat(prompt: str, *, system: str | None = None) -> str:
-    """Single-turn text generation. Implemented in Phase 6."""
-    raise NotImplementedError("chat arrives in Phase 6 (AI shopping assistant)")
+    """Single-turn plain-text generation."""
+    from google.genai import types
+
+    client = get_client()
+    if client is None:
+        raise RuntimeError("Vertex AI not configured (project/credentials).")
+    config = types.GenerateContentConfig(system_instruction=system) if system else None
+    resp = client.models.generate_content(
+        model=CHAT_MODEL, contents=prompt, config=config
+    )
+    return resp.text or ""
 
 
-def extract_cart_from_image(image_bytes: bytes, mime_type: str) -> dict:
-    """Vision: extract cart items from a screenshot. Implemented in Phase 7."""
-    raise NotImplementedError("vision arrives in Phase 7 (screenshot scanner)")
+def _loads_lenient(text: str) -> Any:
+    """Parse model JSON, tolerating ```json fences / stray prose."""
+    t = (text or "").strip()
+    t = re.sub(r"^```(?:json)?\s*", "", t)
+    t = re.sub(r"\s*```$", "", t)
+    try:
+        return json.loads(t)
+    except json.JSONDecodeError:
+        # last resort: grab the first {...} block
+        m = re.search(r"\{.*\}", t, re.DOTALL)
+        if m:
+            return json.loads(m.group(0))
+        raise
+
+
+def generate_json(
+    prompt: str,
+    response_schema: Any | None = None,
+    *,
+    system: str | None = None,
+    temperature: float = 0.2,
+) -> Any:
+    """Structured JSON generation. Uses response_mime_type=application/json plus
+    an optional response schema (a pydantic model class), and parses defensively.
+    """
+    from google.genai import types
+
+    client = get_client()
+    if client is None:
+        raise RuntimeError("Vertex AI not configured (project/credentials).")
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=response_schema,
+        system_instruction=system,
+        temperature=temperature,
+    )
+    resp = client.models.generate_content(
+        model=CHAT_MODEL, contents=prompt, config=config
+    )
+    return _loads_lenient(resp.text or "")
+
+
+def generate_json_from_image(
+    prompt: str,
+    image_bytes: bytes,
+    mime_type: str,
+    response_schema: Any | None = None,
+    *,
+    system: str | None = None,
+    temperature: float = 0.0,
+) -> Any:
+    """Multimodal structured JSON generation (text prompt + one image)."""
+    from google.genai import types
+
+    client = get_client()
+    if client is None:
+        raise RuntimeError("Vertex AI not configured (project/credentials).")
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=response_schema,
+        system_instruction=system,
+        temperature=temperature,
+    )
+    resp = client.models.generate_content(
+        model=CHAT_MODEL,
+        contents=[prompt, types.Part.from_bytes(data=image_bytes, mime_type=mime_type)],
+        config=config,
+    )
+    return _loads_lenient(resp.text or "")
+
+
+def extract_cart_from_image(
+    image_bytes: bytes,
+    mime_type: str,
+    *,
+    prompt: str,
+    response_schema: Any | None = None,
+    system: str | None = None,
+) -> Any:
+    """Vision: extract structured cart items from a screenshot (Phase 7)."""
+    return generate_json_from_image(
+        prompt, image_bytes, mime_type, response_schema, system=system
+    )

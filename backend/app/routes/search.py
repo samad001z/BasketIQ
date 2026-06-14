@@ -5,11 +5,13 @@ fetch each product's platform_prices -> compute best_option. Typed response.
 """
 from fastapi import APIRouter, HTTPException, Query
 
+from app.config import get_settings
 from app.database.supabase import get_supabase
 from app.services import matcher
 from app.utils.schemas import (
     BestOption,
     PlatformPriceOut,
+    PlatformSource,
     ProductOut,
     SearchMatch,
     SearchResponse,
@@ -40,21 +42,38 @@ def _best_option(prices: list[PlatformPriceOut]) -> BestOption | None:
 
 
 @router.get("", response_model=SearchResponse)
-def search(
+async def search(
     q: str = Query(..., min_length=1, description="Search query"),
     k: int = Query(10, ge=1, le=50),
+    pincode: str | None = Query(None, description="Delivery pincode (live mode)"),
 ) -> SearchResponse:
     sb = get_supabase()
     if sb is None:
         raise HTTPException(status_code=503, detail="Supabase not configured")
 
+    settings = get_settings()
+    live = settings.LIVE_PRICES_ENABLED
+    sources: list[PlatformSource] = []
+    if live:
+        # Refresh prices on demand; blocked/slow platforms degrade to seed/cache.
+        from app.services.live import get_engine  # lazy: avoids collector imports otherwise
+
+        try:
+            report = await get_engine().refresh(q, pincode or settings.DEFAULT_PINCODE)
+            sources = [
+                PlatformSource(platform=p, status=("cache" if s == "live" and report.from_cache else s))
+                for p, s in report.platforms.items()
+            ]
+        except Exception:  # noqa: BLE001 - never let the live layer break search
+            sources = []
+
     try:
-        ranked = matcher.search(q, k=k)  # [{id, ..., similarity}]
+        ranked = matcher.search(q, k=k)  # [{id, ..., similarity}] over current DB
     except Exception as exc:  # noqa: BLE001 - embedding/RPC failure
         raise HTTPException(status_code=502, detail=f"Search failed: {exc}")
 
     if not ranked:
-        return SearchResponse(query=q, count=0, matches=[])
+        return SearchResponse(query=q, count=0, matches=[], live=live, sources=sources)
 
     # Fetch full products + prices for the matched ids in one call.
     ids = [m["id"] for m in ranked]
@@ -87,4 +106,6 @@ def search(
             )
         )
 
-    return SearchResponse(query=q, count=len(matches), matches=matches)
+    return SearchResponse(
+        query=q, count=len(matches), matches=matches, live=live, sources=sources
+    )

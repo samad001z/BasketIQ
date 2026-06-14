@@ -134,6 +134,53 @@ export type OptimizeResponse = {
   item_count: number;
 };
 
+export type AssistantBasketItem = { product: Product; quantity: number };
+
+export type AssistantResponse = {
+  message: string;
+  rationale: string;
+  budget: number | null;
+  within_budget: boolean;
+  note: string | null;
+  basket: AssistantBasketItem[];
+  optimization: OptimizeResponse;
+};
+
+export type ScanExtractedItem = {
+  name: string;
+  brand: string | null;
+  quantity: string | null;
+  price_seen: number | null;
+  platform_seen: Platform | null;
+  matched: boolean;
+  matched_product: Product | null;
+};
+
+export type ScanResponse = {
+  extracted: ScanExtractedItem[];
+  matched_count: number;
+  unmatched_count: number;
+  basket: AssistantBasketItem[];
+  optimization: OptimizeResponse;
+  screenshot_total: number | null;
+  savings_vs_screenshot: number | null;
+  storage_path: string | null;
+};
+
+export type ImageFile = { uri: string; name: string; type: string };
+
+export type HistoryPoint = { date: string; price: number };
+export type PlatformHistory = {
+  platform: Platform;
+  points: HistoryPoint[];
+  current: number | null;
+};
+export type ProductHistoryResponse = {
+  product_id: string;
+  name: string;
+  history: PlatformHistory[];
+};
+
 // ---- Endpoints ----
 
 export const api = {
@@ -143,9 +190,31 @@ export const api = {
     request<ProductsResponse>(`/products?page=${page}&page_size=${pageSize}`),
   search: (q: string, k = 12) =>
     request<SearchResponse>(`/search?q=${encodeURIComponent(q)}&k=${k}`),
+  getProductHistory: (id: string) =>
+    request<ProductHistoryResponse>(`/products/${id}/history`),
   optimize: (items: OptimizeRequestItem[]) =>
     request<OptimizeResponse>("/optimize", {
       method: "POST",
       body: JSON.stringify({ items }),
     }),
+  assistant: (message: string, budget?: number | null) =>
+    request<AssistantResponse>("/assistant", {
+      method: "POST",
+      body: JSON.stringify({ message, budget: budget ?? null }),
+    }),
+  // Multipart upload — do NOT set Content-Type (RN sets the boundary).
+  scan: async (file: ImageFile): Promise<ScanResponse> => {
+    const form = new FormData();
+    form.append("file", file as unknown as Blob);
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}/scan`, { method: "POST", body: form });
+    } catch {
+      throw new ApiError(
+        `Network error reaching ${BASE_URL}/scan. Is the backend running?`,
+      );
+    }
+    if (!res.ok) throw new ApiError(`Scan failed: ${res.status}`, res.status);
+    return (await res.json()) as ScanResponse;
+  },
 };

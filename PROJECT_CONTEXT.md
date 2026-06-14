@@ -42,17 +42,19 @@ basketiq/
 │   │   ├── _layout.tsx       # providers + font loading (Inter + Space Grotesk)
 │   │   ├── index.tsx         # Search/home: searchbar + chips + ResultCard + CartButton
 │   │   ├── product/[id].tsx  # Detail: 3-platform compare + sticky add-to-cart
-│   │   └── cart.tsx          # Cart list + Optimize → OptimizedSplit ← Phase 5
+│   │   ├── cart.tsx          # Cart list + Optimize → OptimizedSplit ← Phase 5
+│   │   ├── assistant.tsx     # AI chat → basket + split + Add all ← Phase 6
+│   │   └── scan.tsx          # screenshot upload → matched + split ← Phase 7
 │   ├── components/           # ResultCard, PlatformCompareCard, SearchBar, CategoryChips,
 │   │   │                     #   PressableScale, PlatformDot, StateViews,
-│   │   │                     #   CartControl, CartButton, OptimizedSplit ← Phase 5
+│   │   │                     #   CartControl, CartButton, OptimizedSplit, ProductThumb
 │   ├── lib/
-│   │   ├── api.ts            # typed client: getHealth/getProducts/search/optimize
+│   │   ├── api.ts            # typed client: health/products/search/optimize/assistant/scan
 │   │   ├── theme.ts          # tokens: accent, platform meta, emoji, motion, shadow
 │   │   ├── pricing.ts        # computeBestOption + formatINR (mirrors backend)
 │   │   ├── queryClient.ts
-│   │   └── hooks/            # useProducts/useProduct, useSearch, useDebouncedValue, useOptimize
-│   ├── store/useCartStore.ts # Zustand cart (client-only) ← Phase 5
+│   │   └── hooks/            # useProducts, useSearch, useDebounced, useOptimize, useAssistant, useScan
+│   ├── store/useCartStore.ts # Zustand cart (client-only, +addQuantity) ← P5/P6
 │   └── configs: app.json, babel/metro, tailwind.config.js (theme), global.css, package.json
 ├── backend/                  # FastAPI (Python 3.11+)
 │   ├── main.py               # app, CORS, routers
@@ -64,11 +66,15 @@ basketiq/
 │   │   │   ├── products.py   # GET /products (paginated, prices embedded) ← Phase 2
 │   │   │   ├── search.py     # GET /search  (semantic + best_option) ← Phase 3
 │   │   │   ├── cart.py       # POST /optimize (cheapest split) ← Phase 5
-│   │   │   └── user/assistant/vision.py  # stubs
+│   │   │   ├── assistant.py  # POST /assistant (AI budget basket) ← Phase 6
+│   │   │   ├── vision.py     # POST /scan (screenshot scanner) ← Phase 7
+│   │   │   └── user.py  # stub
 │   │   ├── services/
-│   │   │   ├── matcher.py    # cosine search + Gemini tie-break ← Phase 3
+│   │   │   ├── matcher.py    # cosine search + Gemini tie-break + candidates ← P3/P6
 │   │   │   ├── optimizer.py  # 7-subset cheapest split ← Phase 5
-│   │   │   └── recommender.py  # stub
+│   │   │   ├── recommender.py  # AI basket pipeline ← Phase 6
+│   │   │   └── scanner.py    # vision extract → match → optimize ← Phase 7
+│   │   ├── ai/gemini.py      # embeds + chat + generate_json + vision ← P3/P6/P7
 │   │   ├── tests/test_optimizer.py  # pure optimizer unit tests ← Phase 5
 │   │   ├── ai/gemini.py      # Vertex client + embed_texts/same_product ← Phase 3
 │   │   ├── database/supabase.py   # client (service role) + check_supabase()
@@ -82,7 +88,8 @@ basketiq/
 └── supabase/migrations/
     ├── 0001_init_pgvector_products_prices.sql   # APPLIED
     ├── 0002_full_schema_and_rls.sql             # APPLIED
-    └── 0003_embedding_index_and_match_rpc.sql   # ⚠ run in dashboard (DDL)
+    ├── 0003_embedding_index_and_match_rpc.sql   # ⚠ run in dashboard (DDL)
+    └── 0004_saved_baskets_history_auth.sql      # ⚠ run in dashboard (DDL) ← Phase 8
 ```
 
 ### Conventions
@@ -113,8 +120,13 @@ basketiq/
 | `GOOGLE_CLOUD_PROJECT` | GCP project for Vertex (`gen-lang-client-0293946864`) |
 | `GOOGLE_CLOUD_LOCATION` | Vertex region (`us-central1`) |
 | `ALLOWED_ORIGINS` | CORS origins, comma-separated or `*` |
+| `LIVE_PRICES_ENABLED` | Phase 9 live fetching (default `false` = serve seed) |
+| `DEFAULT_PINCODE`/`DEFAULT_LAT`/`DEFAULT_LON` | collector location (Hyderabad default) |
+| `PRICE_TTL_MINUTES`/`COLLECTOR_TIMEOUT_S` | cache TTL / per-collector timeout |
 
-**`mobile/.env`**: `EXPO_PUBLIC_API_URL` (FastAPI base; emulator `http://10.0.2.2:8000`).
+**`mobile/.env`**: `EXPO_PUBLIC_API_URL` (FastAPI base; USB `http://localhost:8000`),
+`EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_ANON_KEY` (auth/realtime only —
+**anon/publishable key, never service_role**; blank = guest mode).
 
 ---
 
@@ -133,6 +145,17 @@ basketiq/
 written — **run its SQL in the SQL Editor** to enable the indexed search path.
 Until then the matcher uses an in-memory cosine fallback (correct, fine for 80
 items), so `/search` already works.
+
+**Storage:** bucket `cart-screenshots` (private) created — `/scan` uploads
+screenshots there (best-effort). A `product-images` bucket is planned for
+Phase 9 (mirroring live product images).
+
+**Phase 8 DB (migration `0004`, run in dashboard):** `saved_baskets` (owner-only
+RLS) for spending analytics; `handle_new_user` trigger (auto-creates `public.users`
+on signup so FKs/RLS work); `log_price_change` trigger → writes `price_history`
+on any `platform_prices.price` change; `platform_prices` set `REPLICA IDENTITY
+FULL` + added to the `supabase_realtime` publication (so Realtime delivers
+old.price). `price_history` backfilled with demo data via `seed/seed_price_history.py`.
 
 ---
 
@@ -231,14 +254,97 @@ Vertex AI (service-account auth). Migration 0001 applied.
 > spreads). The algorithm is correct (unit tests show larger wins). A more varied
 > seed (different platforms cheapest per item) would make the wedge demo punchier.
 
-### ⏭️ Next: Phase 6 — AI Shopping Assistant (WEDGE COMPLETE)
-**Entry points:** `backend/app/ai/gemini.py` (`chat`), `backend/app/services/recommender.py`,
-`backend/app/routes/assistant.py`, `mobile/` (assistant screen).
-- Implement `gemini.chat()` on Vertex (`gemini-2.5-flash`).
-- `recommender.py` + `POST /assistant`: take NL ("snacks under ₹300") + live
-  catalog/prices as context → return a budget-fit basket with per-item platform +
-  total. Reuse the optimizer for the split. Typed in/out.
-- Mobile: assistant screen (prompt → basket result, "add all to cart").
+### ✅ Phase 6 — AI Shopping Assistant (🎉 DEMOABLE WEDGE COMPLETE)
+- `gemini.generate_json()` (structured output: `response_mime_type=application/json`
+  + pydantic `response_schema`, lenient parse) and `gemini.chat()` on Vertex
+  `gemini-2.5-flash`. `matcher.candidates()` = nearest slice without the floor.
+- `recommender.recommend_basket()`: embed request → pgvector candidate slice (30) →
+  Gemini proposes `{items, rationale}` constrained to candidate ids → **validate
+  every id against the DB, drop hallucinations, clamp qty** → run through
+  `optimizer.optimize()` for the real split → **budget mode** (greedily trim the
+  costliest items, re-optimizing, until ≤ budget; report what was removed).
+- `POST /assistant` (typed `AssistantRequest`/`AssistantResponse`: rationale,
+  basket of `{product, quantity}`, full `optimization`, `within_budget`, `note`).
+- Mobile: `app/assistant.tsx` (prompt + optional ₹budget + suggestion chips →
+  rationale + basket + reused `OptimizedSplit` + "Add all to cart" → `addQuantity`
+  into Zustand → cart). "Ask AI" entry on home. `useAssistant` hook, `api.assistant`.
+- **End-to-end wedge check: ALL PASS** — search→best price→cart optimize→assistant
+  (budget respected, real ids)→add all→re-optimize (totals match). First real
+  `gemini-2.5-flash` generation calls on Vertex succeeded.
+
+### ✅ Phase 7 — Screenshot Cart Scanner (DONE)
+- `gemini.generate_json_from_image()` + `extract_cart_from_image()` —
+  gemini-2.5-flash vision with structured JSON output (image part + schema).
+- `services/scanner.py`: vision extract `{name, brand?, quantity?, price_seen?,
+  platform_seen?}` → `matcher.match_external_product()` per line (drops/flags
+  unmatched) → `optimizer.optimize()` on the matched basket → saving vs the
+  screenshot's own prices.
+- `POST /scan` (`routes/vision.py`): **multipart upload** (app→FastAPI only,
+  honoring the locked convention — backend stores to Storage AND runs vision).
+  Best-effort upload to Storage bucket **`cart-screenshots`** (created). Typed
+  `ScanResponse` (extracted items + matched_product, basket, optimization,
+  screenshot_total, savings_vs_screenshot, storage_path).
+- Mobile: `app/scan.tsx` (expo-image-picker → multipart `/scan` → savings banner
+  + extracted list with `ProductThumb` + reused `OptimizedSplit` + Add all),
+  "📷 Scan a cart" entry on home, `useScan`, `api.scan`. `ProductThumb` uses
+  **expo-image** (cached, fade-in) with category-glyph fallback (image_url null
+  for now; real images come via Open Food Facts seed / Phase 9 collector).
+- **Tested** on 3 rendered cart screenshots: **11/11 catalog items extracted +
+  matched**, 1 non-catalog item correctly flagged unmatched; `/scan` HTTP route
+  verified (3/3 matched, stored to bucket). *(Caveat: tests used clean rendered
+  carts, not real app screenshots — real UI layouts are noisier.)*
+- New deps: `python-multipart` (backend), `expo-image`, `expo-image-picker` (mobile).
+
+### ✅ Phase 8 — Auth, history, realtime, analytics (DONE — code complete)
+- **Auth** (`lib/supabase.ts` anon-key client, `lib/auth.tsx` AuthProvider):
+  email sign-in/up + Google OAuth (PKCE via expo-auth-session/web-browser),
+  session persistence (AsyncStorage), `app/auth.tsx` (dual sign-in/account).
+  First direct mobile↔Supabase path — anon key only, never service_role.
+- **Cart persistence** (`lib/hooks/useCartSync.ts`): on login, hydrate Zustand
+  from `user_cart`; on change, debounced full-replace. Guest carts stay local.
+- **Price history** (`GET /products/{id}/history`, `useProductHistory`,
+  `components/PriceHistoryChart` via react-native-gifted-charts, `app/history/[id].tsx`)
+  + history button on detail. Backfilled demo data; live writes via 0004 trigger.
+- **Realtime** (`lib/hooks/usePriceWatch.ts`): subscribes to `platform_prices`
+  UPDATEs → on price drop shows a toast (`components/Toaster`, `useNotifications`)
+  and invalidates cached catalog so the UI updates live.
+- **Analytics** (`app/analytics.tsx`): reads own `saved_baskets`, monthly spend +
+  saved (LineChart), this-month + totals. "Mark as bought" in cart writes
+  `saved_baskets`. Account button on home.
+- Migration `0004` (saved_baskets + RLS, new-user trigger, price_history trigger,
+  realtime). Deps: `@supabase/supabase-js`, async-storage, url-polyfill,
+  expo-web-browser/auth-session, react-native-svg, react-native-gifted-charts.
+- **Verified:** `tsc --noEmit` passes (0 errors); history endpoint live. **NOT
+  yet runtime-verified** — needs anon key + dashboard config + a device (see below).
+
+### ✅ Phase 9 — Live autonomous price engine (DONE — framework live, real collectors best-effort)
+- `collectors/`: `base.py` (`ProductOffer`, `Collector` ABC, `CircuitBreaker`,
+  errors), `engine.py` (`LiveEngine`: TTL query cache, concurrent fetch with
+  per-collector timeout, graceful degradation, circuit breaker, global rate
+  limit, DB-agnostic `on_offers` hook), `mock.py`, and real `blinkit.py` /
+  `zepto.py` / `instamart.py` (httpx internal-API first → Playwright fallback).
+- `services/live.py`: `process_offers` (matcher-map each offer → master or
+  **create+embed new master** → upsert `platform_prices` with fresh `updated_at`;
+  price_history via the 0004 trigger; best-effort image mirror to `product-images`)
+  + `get_engine()` singleton.
+- `/search` now async + **live-gated** (`LIVE_PRICES_ENABLED`, default OFF): when
+  on, refreshes the query (per-platform `sources[].status` = live/cache/stale/
+  error/skipped) then runs the same semantic search; **off by default so the
+  Phase 1–8 wedge is unchanged**. App/AI code untouched — they still read only
+  `platform_prices`.
+- **Verified:** orchestration unit-validated with mocks (degradation, TTL,
+  circuit breaker, bounded timeout); full pipeline proven end-to-end (mock offer →
+  embedded master → upserted price → searchable). **Real collectors: all 3 are
+  WAF/anti-bot blocked from server-side httpx** (Blinkit 403, Instamart 403,
+  Zepto API gated) — they degrade to seed, which is the designed behavior. Live
+  data needs the **Playwright fallback run on a residential machine** (not yet
+  hardened). `product-images` bucket created. README documents run/config/ToS/reliability.
+
+### 🏁 All 9 phases built. Remaining work is hardening, not new features:
+- Harden the flakiest collector (Zepto first — most accessible) via Playwright on
+  a residential connection: location/store resolution + real DOM selectors.
+- Run pending dashboard migrations (`0003`, `0004`); supply mobile anon key +
+  Google OAuth config; verify on a physical device (Expo Go) + RLS cross-user test.
 
 ---
 
@@ -248,6 +354,10 @@ Vertex AI (service-account auth). Migration 0001 applied.
 3. Embeddings & product matcher ✅
 4. Core app UI ✅
 5. Cart + Cart Optimizer ✅
+6. AI Shopping Assistant ✅ — 🎉 **DEMOABLE WEDGE COMPLETE (Phases 1–6)**
+7. Screenshot Cart Scanner ✅
+8. Auth, History, Realtime & Analytics ✅
+9. Live Autonomous Price Engine ✅ — framework live; real collectors best-effort (browser fallback pending)
 5. Cart + Cart Optimizer — 7-subset cheapest split with delivery fees/thresholds, savings vs single platform
 6. AI Shopping Assistant — `/assistant`, NL → budget basket (WEDGE COMPLETE)
 7. Screenshot Cart Scanner — upload → Storage → `gemini-2.5-flash` vision → match → compare

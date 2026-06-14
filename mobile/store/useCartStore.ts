@@ -11,10 +11,12 @@ export type CartLine = { product: Product; quantity: number };
 type CartState = {
   lines: CartLine[];
   add: (product: Product) => void; // add first unit (or +1 if present)
+  addQuantity: (product: Product, qty: number) => void; // add N units at once
   inc: (id: string) => void;
   dec: (id: string) => void; // removes the line when it hits 0
   remove: (id: string) => void;
   clear: () => void;
+  replace: (lines: CartLine[]) => void; // used by cart sync on login
 };
 
 export const useCartStore = create<CartState>((set) => ({
@@ -30,6 +32,21 @@ export const useCartStore = create<CartState>((set) => ({
         };
       }
       return { lines: [...s.lines, { product, quantity: 1 }] };
+    }),
+  addQuantity: (product, qty) =>
+    set((s) => {
+      const n = Math.max(1, Math.floor(qty));
+      const existing = s.lines.find((l) => l.product.id === product.id);
+      if (existing) {
+        return {
+          lines: s.lines.map((l) =>
+            l.product.id === product.id
+              ? { ...l, quantity: l.quantity + n }
+              : l,
+          ),
+        };
+      }
+      return { lines: [...s.lines, { product, quantity: n }] };
     }),
   inc: (id) =>
     set((s) => ({
@@ -47,6 +64,7 @@ export const useCartStore = create<CartState>((set) => ({
     })),
   remove: (id) => set((s) => ({ lines: s.lines.filter((l) => l.product.id !== id) })),
   clear: () => set({ lines: [] }),
+  replace: (lines) => set({ lines }),
 }));
 
 /** Total unit count across the cart (for the header badge). */
