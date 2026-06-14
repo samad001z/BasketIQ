@@ -27,6 +27,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "30fe43db-da8e-4269-aaa1-b1df01a8f2fc"
+      }
+    },
+    "owner": "samad001zs-team"
   }
 }
