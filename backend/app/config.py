@@ -8,14 +8,40 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _materialize_vertex_credentials() -> None:
-    """Host-agnostic Vertex auth: on cloud hosts (Render/Vercel/etc.) there's no
-    committed sa-vertex.json, so write GOOGLE_CREDENTIALS_JSON to a temp file and
-    point ADC at it. No-op locally (the .env file path is already set)."""
-    creds = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-    if creds and not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        path = pathlib.Path(tempfile.gettempdir()) / "sa-vertex.json"
-        path.write_text(creds, encoding="utf-8")
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(path)
+    """Host-agnostic Vertex auth. On cloud hosts there's no committed
+    sa-vertex.json, so materialise it from an env var and point ADC at it:
+      - GOOGLE_CREDENTIALS_B64  (preferred — single line, paste-safe), or
+      - GOOGLE_CREDENTIALS_JSON (raw JSON; can break on multi-line paste).
+    Only sets GOOGLE_APPLICATION_CREDENTIALS if the content is valid JSON, so a
+    bad paste surfaces as 'not configured' instead of a mid-request crash.
+    No-op locally (GOOGLE_APPLICATION_CREDENTIALS already points at the file)."""
+    import base64
+    import json
+
+    if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        return
+
+    content: str | None = None
+    b64 = os.environ.get("GOOGLE_CREDENTIALS_B64")
+    raw = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    if b64:
+        try:
+            content = base64.b64decode(b64).decode("utf-8")
+        except Exception:  # noqa: BLE001
+            content = None
+    elif raw:
+        content = raw
+
+    if not content:
+        return
+    try:
+        json.loads(content)  # validate before trusting it
+    except Exception:  # noqa: BLE001 - bad paste → leave Vertex unconfigured
+        return
+
+    path = pathlib.Path(tempfile.gettempdir()) / "sa-vertex.json"
+    path.write_text(content, encoding="utf-8")
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(path)
 
 
 _materialize_vertex_credentials()

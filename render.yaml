@@ -21,8 +21,10 @@ services:
         sync: false
       - key: GOOGLE_CLOUD_LOCATION
         value: us-central1
-      # Paste the FULL contents of sa-vertex.json as the value (one line is fine).
-      - key: GOOGLE_CREDENTIALS_JSON
+      # base64 of sa-vertex.json (single line, paste-safe). Generate with:
+      #   python -c "import base64;print(base64.b64encode(open('sa-vertex.json','rb').read()).decode())"
+      # Do NOT also set GOOGLE_APPLICATION_CREDENTIALS here.
+      - key: GOOGLE_CREDENTIALS_B64
         sync: false
       - key: ALLOWED_ORIGINS
         value: "*"

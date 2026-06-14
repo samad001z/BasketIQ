@@ -3,22 +3,15 @@
 Deploy with Vercel "Root Directory" = `backend`. Vercel's @vercel/python serves
 the exported `app` (ASGI). Live collectors must stay OFF on Vercel (datacenter
 IP + no Playwright) — keep LIVE_PRICES_ENABLED unset/false there.
+
+Vertex credentials are materialised by app.config from GOOGLE_CREDENTIALS_B64
+(preferred) or GOOGLE_CREDENTIALS_JSON — set one of those in the host's env.
 """
 import os
-import pathlib
 import sys
 
 # Make `main` importable (api/ is one level below backend/).
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Vertex service account: serverless has no committed file, so materialise the
-# JSON from an env var (set GOOGLE_CREDENTIALS_JSON to the file's contents).
-_creds = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-if _creds and not os.environ.get("_SA_WRITTEN"):
-    path = "/tmp/sa-vertex.json"
-    pathlib.Path(path).write_text(_creds)
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = path
-    os.environ["_SA_WRITTEN"] = "1"
 
 from main import app  # noqa: E402  (exposed to @vercel/python as the ASGI app)
 
