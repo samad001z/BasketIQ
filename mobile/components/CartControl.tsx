@@ -1,7 +1,9 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "react-native";
 
 import { PressableScale } from "@/components/PressableScale";
 import type { Product } from "@/lib/api";
+import { cardShadow } from "@/lib/theme";
 import { useCartQuantity, useCartStore } from "@/store/useCartStore";
 
 type Props = { product: Product; size?: "sm" | "lg" };
@@ -25,8 +27,11 @@ export function CartControl({ product, size = "sm" }: Props) {
             </Text>
           </View>
         ) : (
-          <View className="h-9 w-9 items-center justify-center rounded-full bg-accent">
-            <Text className="text-[18px] leading-[18px] text-white">+</Text>
+          <View
+            style={cardShadow}
+            className="h-9 w-9 items-center justify-center rounded-full bg-accent"
+          >
+            <Ionicons name="add" size={22} color="#fff" />
           </View>
         )}
       </PressableScale>
@@ -42,17 +47,15 @@ export function CartControl({ product, size = "sm" }: Props) {
     >
       <PressableScale onPress={() => dec(product.id)}>
         <View className={`${btn} items-center justify-center rounded-full bg-surface`}>
-          <Text className="text-[18px] leading-[18px] text-accent-dark">−</Text>
+          <Ionicons name="remove" size={lg ? 22 : 18} color="#15803D" />
         </View>
       </PressableScale>
-      <Text
-        className={`text-center font-display-bold text-accent-dark ${num}`}
-      >
+      <Text className={`text-center font-display-bold text-accent-dark ${num}`}>
         {qty}
       </Text>
       <PressableScale onPress={() => inc(product.id)}>
         <View className={`${btn} items-center justify-center rounded-full bg-accent`}>
-          <Text className="text-[18px] leading-[18px] text-white">+</Text>
+          <Ionicons name="add" size={lg ? 22 : 18} color="#fff" />
         </View>
       </PressableScale>
     </View>

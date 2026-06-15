@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Text, View } from "react-native";
 import Animated, {
@@ -7,11 +8,11 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { CartControl } from "@/components/CartControl";
-import { PlatformDot } from "@/components/PlatformDot";
 import { PressableScale } from "@/components/PressableScale";
+import { ProductThumb } from "@/components/ProductThumb";
 import type { Product } from "@/lib/api";
 import { computeBestOption, formatINR } from "@/lib/pricing";
-import { categoryEmoji, cardShadow, MOTION, PLATFORM_META } from "@/lib/theme";
+import { cardShadow, MOTION, PLATFORM_META } from "@/lib/theme";
 
 export function ResultCard({ product, index }: { product: Product; index: number }) {
   const reduced = useReducedMotion();
@@ -30,68 +31,62 @@ export function ResultCard({ product, index }: { product: Product; index: number
           router.push({ pathname: "/product/[id]", params: { id: product.id } })
         }
       >
-        <View style={cardShadow} className="rounded-4xl bg-surface p-4">
-          {/* Row 1: glyph · name/meta · price + fastest */}
-          <View className="flex-row items-center gap-3">
-            <View className="h-14 w-14 items-center justify-center rounded-2xl bg-surface-sunken">
-              <Text className="text-2xl">{categoryEmoji(product.category)}</Text>
-            </View>
+        <View style={cardShadow} className="rounded-3xl bg-surface p-3.5">
+          <View className="flex-row gap-3.5">
+            <ProductThumb product={product} size={72} radius={18} />
 
-            <View className="flex-1">
+            <View className="flex-1 justify-center">
               <Text
                 numberOfLines={1}
-                className="font-sans-semibold text-[15px] text-ink"
+                className="font-sans-bold text-[15px] text-ink"
               >
                 {product.name}
               </Text>
               <Text className="mt-0.5 font-sans text-[12px] text-ink-muted">
                 {[product.brand, product.quantity].filter(Boolean).join(" · ")}
               </Text>
-            </View>
 
-            {best ? (
-              <View className="items-end">
-                <Text className="font-display-bold text-[22px] leading-none text-ink">
-                  {formatINR(best.cheapestPrice)}
-                </Text>
-                <View className="mt-1 flex-row items-center gap-1.5">
-                  <PlatformDot platform={best.cheapestPlatform} />
+              {best ? (
+                <View className="mt-2 flex-row items-center gap-1.5">
+                  <View className="flex-row items-center gap-1 rounded-md bg-accent px-1.5 py-0.5">
+                    <Ionicons name="star" size={9} color="#fff" />
+                    <Text className="font-sans-bold text-[9px] tracking-wide text-white">
+                      BEST
+                    </Text>
+                  </View>
                   <Text className="font-sans-medium text-[11px] text-ink-soft">
-                    {PLATFORM_META[best.cheapestPlatform].label} · ⚡
+                    {PLATFORM_META[best.cheapestPlatform].label}
+                  </Text>
+                  <Ionicons name="flash" size={11} color="#8B948D" />
+                  <Text className="font-sans-medium text-[11px] text-ink-muted">
                     {best.fastestMins ?? "—"}m
                   </Text>
                 </View>
+              ) : (
+                <Text className="mt-2 font-sans-medium text-[12px] text-ink-muted">
+                  Out of stock
+                </Text>
+              )}
+            </View>
+
+            {best && (
+              <View className="items-end justify-center">
+                <Text className="font-display-bold text-[22px] leading-none text-ink">
+                  {formatINR(best.cheapestPrice)}
+                </Text>
+                {best.savings > 0 && (
+                  <View className="mt-1.5 rounded-md bg-accent-light px-1.5 py-0.5">
+                    <Text className="font-sans-semibold text-[10px] text-accent-dark">
+                      save {formatINR(best.savings)}
+                    </Text>
+                  </View>
+                )}
+                <View className="mt-2">
+                  <CartControl product={product} />
+                </View>
               </View>
-            ) : (
-              <Text className="font-sans-medium text-[12px] text-ink-muted">
-                Unavailable
-              </Text>
             )}
           </View>
-
-          {/* Row 2: BEST · savings · add-to-cart */}
-          {best && (
-            <View className="mt-3.5 flex-row items-center gap-2">
-              <View className="flex-row items-center gap-1 rounded-full bg-accent-light px-2.5 py-1">
-                <Text className="text-[10px]">⭐</Text>
-                <Text className="font-sans-bold text-[10px] tracking-wide text-accent-dark">
-                  BEST
-                </Text>
-              </View>
-
-              {best.savings > 0 && (
-                <View className="rounded-full bg-accent-light px-2.5 py-1">
-                  <Text className="font-sans-semibold text-[11px] text-accent-dark">
-                    Save {formatINR(best.savings)}
-                  </Text>
-                </View>
-              )}
-
-              <View className="flex-1" />
-
-              <CartControl product={product} />
-            </View>
-          )}
         </View>
       </PressableScale>
     </Animated.View>

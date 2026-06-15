@@ -9,12 +9,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CartControl } from "@/components/CartControl";
 import { PlatformCompareCard } from "@/components/PlatformCompareCard";
+import { ProductThumb } from "@/components/ProductThumb";
 import { PlatformDot } from "@/components/PlatformDot";
 import { PressableScale } from "@/components/PressableScale";
 import type { Platform } from "@/lib/api";
 import { useProduct } from "@/lib/hooks/useProducts";
 import { computeBestOption, formatINR } from "@/lib/pricing";
-import { categoryEmoji, cardShadow, PLATFORM_META } from "@/lib/theme";
+import { cardShadow, PLATFORM_META } from "@/lib/theme";
 import { useCartCount } from "@/store/useCartStore";
 
 const PLATFORM_ORDER: Platform[] = ["blinkit", "zepto", "instamart"];
@@ -81,11 +82,8 @@ export default function ProductDetailScreen() {
               {/* Hero */}
               <Animated.View entering={enter(0)}>
                 <View className="items-center pt-2">
-                  <View className="h-32 w-32 items-center justify-center rounded-4xl bg-surface">
-                    <Text className="text-6xl">
-                      {categoryEmoji(product.category)}
-                    </Text>
-                  </View>
+                  <ProductThumb product={product} size={140} radius={28} />
+                  <View className="h-2" />
                   <Text className="mt-4 text-center font-sans-bold text-[22px] text-ink">
                     {product.name}
                   </Text>

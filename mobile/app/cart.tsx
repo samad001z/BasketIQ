@@ -6,11 +6,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CartControl } from "@/components/CartControl";
 import { OptimizedSplit } from "@/components/OptimizedSplit";
 import { PressableScale } from "@/components/PressableScale";
+import { ProductThumb } from "@/components/ProductThumb";
 import { useAuth } from "@/lib/auth";
 import { useOptimize } from "@/lib/hooks/useOptimize";
 import { computeBestOption, formatINR } from "@/lib/pricing";
 import { supabase } from "@/lib/supabase";
-import { cardShadow, categoryEmoji } from "@/lib/theme";
+import { cardShadow } from "@/lib/theme";
 import { useCartStore } from "@/store/useCartStore";
 import { useNotifications } from "@/store/useNotifications";
 
@@ -130,11 +131,7 @@ export default function CartScreen() {
                     style={cardShadow}
                     className="flex-row items-center gap-3 rounded-4xl bg-surface p-4"
                   >
-                    <View className="h-12 w-12 items-center justify-center rounded-2xl bg-surface-sunken">
-                      <Text className="text-xl">
-                        {categoryEmoji(l.product.category)}
-                      </Text>
-                    </View>
+                    <ProductThumb product={l.product} size={52} radius={14} />
                     <View className="flex-1">
                       <Text
                         numberOfLines={1}

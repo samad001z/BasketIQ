@@ -5,9 +5,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OptimizedSplit } from "@/components/OptimizedSplit";
 import { PressableScale } from "@/components/PressableScale";
+import { ProductThumb } from "@/components/ProductThumb";
 import { useAssistant } from "@/lib/hooks/useAssistant";
 import { formatINR } from "@/lib/pricing";
-import { cardShadow, categoryEmoji } from "@/lib/theme";
+import { cardShadow } from "@/lib/theme";
 import { useCartStore } from "@/store/useCartStore";
 
 const SUGGESTIONS = [
@@ -153,9 +154,7 @@ export default function AssistantScreen() {
                     key={b.product.id}
                     className="flex-row items-center gap-3 py-2"
                   >
-                    <Text className="text-lg">
-                      {categoryEmoji(b.product.category)}
-                    </Text>
+                    <ProductThumb product={b.product} size={38} radius={11} />
                     <Text
                       numberOfLines={1}
                       className="flex-1 font-sans text-[13px] text-ink-soft"

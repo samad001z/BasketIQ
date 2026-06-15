@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { FlatList, Text, View } from "react-native";
@@ -68,9 +69,9 @@ export default function HomeScreen() {
             <PressableScale onPress={() => router.push("/auth")}>
               <View
                 style={cardShadow}
-                className="h-12 w-12 items-center justify-center rounded-full bg-surface"
+                className="h-11 w-11 items-center justify-center rounded-full bg-surface"
               >
-                <Text className="text-[18px]">👤</Text>
+                <Ionicons name="person-outline" size={20} color="#0E1A13" />
               </View>
             </PressableScale>
             <CartButton />
@@ -80,22 +81,26 @@ export default function HomeScreen() {
           <SearchBar value={query} onChangeText={setQuery} />
         </View>
         <View className="mt-3 flex-row gap-2.5">
-          <PressableScale onPress={() => router.push("/assistant")}>
-            <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-accent-light px-4 py-3">
-              <Text className="text-[14px]">✨</Text>
-              <Text className="font-sans-semibold text-[13px] text-accent-dark">
-                Ask AI
-              </Text>
-            </View>
-          </PressableScale>
-          <PressableScale onPress={() => router.push("/scan")}>
-            <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-accent-light px-4 py-3">
-              <Text className="text-[14px]">📷</Text>
-              <Text className="font-sans-semibold text-[13px] text-accent-dark">
-                Scan a cart
-              </Text>
-            </View>
-          </PressableScale>
+          <View className="flex-1">
+            <PressableScale onPress={() => router.push("/assistant")}>
+              <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-accent py-3">
+                <Ionicons name="sparkles" size={15} color="#fff" />
+                <Text className="font-sans-semibold text-[13px] text-white">
+                  Ask AI
+                </Text>
+              </View>
+            </PressableScale>
+          </View>
+          <View className="flex-1">
+            <PressableScale onPress={() => router.push("/scan")}>
+              <View className="flex-row items-center justify-center gap-1.5 rounded-2xl bg-accent-light py-3">
+                <Ionicons name="scan-outline" size={16} color="#15803D" />
+                <Text className="font-sans-semibold text-[13px] text-accent-dark">
+                  Scan a cart
+                </Text>
+              </View>
+            </PressableScale>
+          </View>
         </View>
       </View>
 

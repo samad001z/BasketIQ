@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Pressable, TextInput, View } from "react-native";
 
 import { cardShadow } from "@/lib/theme";
@@ -12,12 +13,9 @@ export function SearchBar({ value, onChangeText, placeholder }: Props) {
   return (
     <View
       style={cardShadow}
-      className="flex-row items-center gap-3 rounded-3xl bg-surface px-4 py-3.5"
+      className="flex-row items-center gap-2.5 rounded-2xl bg-surface px-4 py-3.5"
     >
-      <View className="h-7 w-7 items-center justify-center rounded-full bg-accent-light">
-        {/* Lightweight glyph icon — no asset needed */}
-        <View className="h-3 w-3 rounded-full border-2 border-accent-dark" />
-      </View>
+      <Ionicons name="search" size={20} color="#16A34A" />
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -29,12 +27,8 @@ export function SearchBar({ value, onChangeText, placeholder }: Props) {
         clearButtonMode="never"
       />
       {value.length > 0 && (
-        <Pressable
-          onPress={() => onChangeText("")}
-          hitSlop={10}
-          className="h-6 w-6 items-center justify-center rounded-full bg-surface-sunken"
-        >
-          <View className="h-0.5 w-3 rounded-full bg-ink-muted" />
+        <Pressable onPress={() => onChangeText("")} hitSlop={10}>
+          <Ionicons name="close-circle" size={20} color="#C2C9C3" />
         </Pressable>
       )}
     </View>

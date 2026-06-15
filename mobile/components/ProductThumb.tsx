@@ -1,41 +1,43 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
 import type { Product } from "@/lib/api";
-import { categoryEmoji } from "@/lib/theme";
+import { categoryStyle } from "@/lib/theme";
 
 /**
- * Product thumbnail. Uses expo-image (cached, with a fade-in) when the product
- * has an image_url; otherwise degrades to a clean category glyph. Real images
- * arrive when image_url is populated (Open Food Facts seed / Phase 9 collector).
+ * Product thumbnail. Real photo (expo-image, cached + fade) when available;
+ * otherwise a soft category-tinted tile with a matching icon — premium, never
+ * an empty grey box.
  */
 export function ProductThumb({
   product,
-  size = 44,
+  size = 64,
+  radius = 16,
 }: {
   product: Product | null;
   size?: number;
+  radius?: number;
 }) {
   const url = product?.image_url;
   if (url) {
     return (
       <Image
         source={url}
-        style={{ width: size, height: size, borderRadius: 12 }}
-        contentFit="cover"
-        transition={200}
+        style={{ width: size, height: size, borderRadius: radius, backgroundColor: "#F4F6F4" }}
+        contentFit="contain"
+        transition={250}
         cachePolicy="memory-disk"
       />
     );
   }
+  const s = categoryStyle(product?.category ?? null);
   return (
     <View
-      style={{ width: size, height: size }}
-      className="items-center justify-center rounded-xl bg-surface-sunken"
+      style={{ width: size, height: size, borderRadius: radius, backgroundColor: s.tile }}
+      className="items-center justify-center"
     >
-      <Text style={{ fontSize: size * 0.45 }}>
-        {categoryEmoji(product?.category ?? null)}
-      </Text>
+      <Ionicons name={s.ion as any} size={size * 0.42} color={s.fg} />
     </View>
   );
 }
