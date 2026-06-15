@@ -6,13 +6,7 @@
     "orientation": "portrait",
     "scheme": "basketiq",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#16A34A"
-    },
     "android": {
       "package": "com.basketiq.app",
       "adaptiveIcon": {
@@ -30,7 +24,16 @@
     },
     "plugins": [
       "expo-router",
-      "expo-image"
+      "expo-image",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#16A34A"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
